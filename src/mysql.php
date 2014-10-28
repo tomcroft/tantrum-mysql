@@ -1,6 +1,8 @@
 <?php
 
-namespace tantrum;
+namespace tantrum\mysql;
+
+use tomcroft\tantrum\Querybuilder;
 
 class mysql
 {

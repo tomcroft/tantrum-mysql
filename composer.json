@@ -13,12 +13,12 @@
     ],
     "autoload": {
         "psr-4" : {
-            "tantrum\\" : "src/"
+            "tantrum-mysql\\" : "src/"
         }
     },
     "autoload-dev": {
         "psr-4": { 
-            "tantrum\\tests\\": "tests/"
+            "tantrum-mysql\\tests\\": "tests/"
         }
     },
     "require-dev": {

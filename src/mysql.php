@@ -1,8 +1,6 @@
 <?php
 
-namespace tantrummysql;
-
-use tomcroft\tantrum;
+namespace tantrum;
 
 class mysql
 {
@@ -14,7 +12,7 @@ class mysql
 		parent::__construct('mysql', $schema);
 	}
 	
-	public function FormatSelect(tantrum\QueryBuilder\Query $query)
+	public function FormatSelect(QueryBuilder\Query $query)
 	{
 		$fields = !$query->GetFields()->IsEmpty()?implode(','.PHP_EOL, array_keys($query->GetFields()->ToArray())):'*';
 		$queryString = 'SELECT '.PHP_EOL.$fields.PHP_EOL.' FROM '.PHP_EOL.$query->GetFrom();
@@ -29,9 +27,9 @@ class mysql
 			$queryString .= ' WHERE ';
 			
 			foreach($clauses as $clause) {
-				if($clause instanceof tantrum\QueryBuilder\Clause) {
+				if($clause instanceof QueryBuilder\Clause) {
 					$queryString .= $this->FormatClause($clause);
-				} elseif($clause instanceof tantrum\QueryBuilder\ClauseCollection) {
+				} elseif($clause instanceof QueryBuilder\ClauseCollection) {
 					$queryString .= $this->FormatClauseCollection($clause);
 				}
 			}
@@ -43,7 +41,7 @@ class mysql
 		return $queryString;
 	}
     
-  public function FormatInsert(tantrum\QueryBuilder\Query $query)
+  public function FormatInsert(QueryBuilder\Query $query)
   {
   	$placeholders = array_fill(0, count($query->GetFields()->ToArray()), '?');
   	$queryString = 'INSERT INTO '.$query->GetFrom().
@@ -61,7 +59,7 @@ class mysql
   	return $queryString;
   }
   
-  public function FormatDelete(tantrum\QueryBuilder\Query $query)
+  public function FormatDelete(QueryBuilder\Query $query)
   {
   	$queryString = 'DELETE FROM '.$query->GetFrom();
   	$queryString .= $query->GetAlias()?' AS '.$query->GetAlias().PHP_EOL:''.PHP_EOL;
@@ -70,9 +68,9 @@ class mysql
 	}
 	$queryString .= ' WHERE ';
   	foreach($query->GetClauses() as $clause) {
-  		if($clause instanceof tantrum\QueryBuilder\Clause) {
+  		if($clause instanceof QueryBuilder\Clause) {
   			$queryString .= $this->FormatClause($clause);
-  		} elseif($clause instanceof tantrum\QueryBuilder\ClauseCollection) {
+  		} elseif($clause instanceof QueryBuilder\ClauseCollection) {
   			$queryString .= $this->FormatClauseCollection($clause);
   		}
   	}
@@ -82,7 +80,7 @@ class mysql
   	return $queryString;
   }
    
-  public function FormatUpdate(tantrum\QueryBuilder\Query $query)
+  public function FormatUpdate(QueryBuilder\Query $query)
   {
   	$queryString = 'UPDATE '.$query->GetFrom();
   	
@@ -92,9 +90,9 @@ class mysql
   	
   	$queryString .= ' WHERE ';
   	foreach($query->GetClauses() as $clause) {
-  		if($clause instanceof tantrum\QueryBuilder\Clause) {
+  		if($clause instanceof QueryBuilder\Clause) {
   			$queryString .= $this->FormatClause($clause);
-  		} elseif($clause instanceof tantrum\QueryBuilder\ClauseCollection) {
+  		} elseif($clause instanceof QueryBuilder\ClauseCollection) {
   			$queryString .= $this->FormatClauseCollection($clause);
   		}
   	}
@@ -171,23 +169,23 @@ class mysql
 		return $this->FetchAll();
 	}
 	
-	protected function FormatJoin(tantrum\QueryBuilder\Join $join)
+	protected function FormatJoin(QueryBuilder\Join $join)
 	{
 		switch ($join->GetType()) {
-			case tantrum\QueryBuilder\Join::INNER:
+			case QueryBuilder\Join::INNER:
 				$joinType = 'INNER';
 			break;
-			case tantrum\QueryBuilder\Join::LEFT:
+			case QueryBuilder\Join::LEFT:
 				$joinType = 'LEFT';
 			break;
 			default:
-				throw new tantrum\Exception\DatabaseDException('Join type not handled');
+				throw new Exception\DatabaseDException('Join type not handled');
 			break;
 		}
 		return sprintf(' %s JOIN %s AS %s %s', $joinType, $join->GetTarget(), $join->GetAlias(), $this->FormatClauseCollection($join->GetClauseCollection())).PHP_EOL;
 	}
 	
-	protected function FormatClause(tantrum\QueryBuilder\Clause $clause, $clauseString = '')
+	protected function FormatClause(QueryBuilder\Clause $clause, $clauseString = '')
 	{
 		list($left, $right) = $clause->getArgs();
 		
@@ -199,7 +197,7 @@ class mysql
 		return $clauseString."\r\n";
 	}
 	
-	protected function FormatClauseCollection(tantrum\QueryBuilder\ClauseCollection $clauseCollection)
+	protected function FormatClauseCollection(QueryBuilder\ClauseCollection $clauseCollection)
 	{
 		switch($clauseCollection->Count()) {
 			case 0: 
@@ -209,11 +207,11 @@ class mysql
 				return $this->FormatClause($clauseCollection->ToArray()[0]);
 				break;
 			default:
-				$strReturn = ($clauseCollection->GetType()==tantrum\QueryBuilder\Clause::ON)?'':$this->FormatOperator($clauseCollection->GetType()).'(';
+				$strReturn = ($clauseCollection->GetType()==QueryBuilder\Clause::ON)?'':$this->FormatOperator($clauseCollection->GetType()).'(';
 				foreach($clauseCollection->ToArray() as $clause) {
 					$return = $this->FormatClause($clause, $return);
 				}
-				$return .= ($clauseCollection->GetType()==tantrum\QueryBuilder\Clause::ON)?'':')';
+				$return .= ($clauseCollection->GetType()==QueryBuilder\Clause::ON)?'':')';
 				return $return;
 				break;
 		}
@@ -222,32 +220,32 @@ class mysql
 	protected function FormatOperator($operator)
 	{
 		switch($operator) {
-			case tantrum\QueryBuilder\Clause::WHERE:
+			case QueryBuilder\Clause::WHERE:
 				return '';
 				break;
-			case tantrum\QueryBuilder\Clause::EQUALS:
+			case QueryBuilder\Clause::EQUALS:
 				return ' = ';
 				break;
-			case tantrum\QueryBuilder\Clause::NOT_EQUAL:
+			case QueryBuilder\Clause::NOT_EQUAL:
 				return ' <=> ';
 				break;
-			case tantrum\QueryBuilder\Clause::LESS_THAN:
+			case QueryBuilder\Clause::LESS_THAN:
 				return ' < ';
 				break;
-			case tantrum\QueryBuilder\Clause::GREATER_THAN:
+			case QueryBuilder\Clause::GREATER_THAN:
 				return ' > ';
 				break;
-			case tantrum\QueryBuilder\Clause::_AND:
+			case QueryBuilder\Clause::_AND:
 				return ' AND ';
 				break;
-			case tantrum\QueryBuilder\Clause::_OR:
+			case QueryBuilder\Clause::_OR:
 				return ' OR ';
 				break;
-			case tantrum\QueryBuilder\Clause::ON:
+			case QueryBuilder\Clause::ON:
 				return ' ON ';
 				break;
 			default:
-				throw new tantrum\Exception\DatabaseException('Operator not handled');
+				throw new Exception\DatabaseException('Operator not handled');
 				break;
 		}
 	}
@@ -275,7 +273,7 @@ class mysql
 			 		$orderString .= ' DESC';
 			 		break;
 			 	default:
-			 		throw new tantrum\Exception\Exception('Order by direction not handled');
+			 		throw new Exception\Exception('Order by direction not handled');
 			 		break;
 			}
 		}

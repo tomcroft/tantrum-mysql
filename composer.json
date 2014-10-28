@@ -1,5 +1,5 @@
 {
-    "name": "tomcroft/tantrum/mysql",
+    "name": "tomcroft/tantrum-mysql",
     "description": "Mysql Adaptor for tantrum ORM",
     "type" : "library",
     "keywords": ["database, php, mysql, ORM"],

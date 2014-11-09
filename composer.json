@@ -12,9 +12,7 @@
         }
     ],
     "autoload": {
-        "psr-4" : {
-            "tantrum-mysql\\" : "src/"
-        }
+        "classmap" : ["src"]
     },
     "autoload-dev": {
         "psr-4": { 

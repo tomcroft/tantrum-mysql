@@ -2,7 +2,7 @@
 
 use tomcroft\tantrum\QueryBuilder;
 
-class mysql
+class tantrum_mysql_adaptor
 {
 	protected $schema;
 	protected $nonEscapedStrings = array('NOW()', null);

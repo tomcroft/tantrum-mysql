@@ -1,105 +1,100 @@
 <?php
 
-use tomcroft\tantrum\QueryBuilder;
+use tantrum\QueryBuilder;
 
 class tantrum_mysql_adaptor
 {
-	protected $schema;
-	protected $nonEscapedStrings = array('NOW()', null);
-
- 	public function __construct($schema = 'information_schema')
-	{
-		parent::__construct('mysql', $schema);
-	}
+	protected static $schema;
+	protected static $nonEscapedStrings = array('NOW()', null);
 	
-	public function FormatSelect(QueryBuilder\Query $query)
+	public static function formatSelect(QueryBuilder\Query $query)
 	{
-		$fields = !$query->GetFields()->IsEmpty()?implode(','.PHP_EOL, array_keys($query->GetFields()->ToArray())):'*';
-		$queryString = 'SELECT '.PHP_EOL.$fields.PHP_EOL.' FROM '.PHP_EOL.$query->GetFrom();
-		$queryString .= $query->GetAlias()?' AS '.$query->GetAlias().PHP_EOL:''.PHP_EOL;
+		$fields = !$query->GetFields()->isEmpty()?implode(','.PHP_EOL, array_keys($query->getFields()->toArray())):'*';
+		$queryString = 'SELECT '.PHP_EOL.$fields.PHP_EOL.' FROM '.PHP_EOL.$query->getTarget();
+		$queryString .= $query->GetAlias()?' AS '.$query->getAlias().PHP_EOL:''.PHP_EOL;
 
-		foreach($query->GetJoins() as $join) {
-			$queryString .= $this->FormatJoin($join);
+		foreach($query->getJoins() as $join) {
+			$queryString .= self::formatJoin($join);
 		}
-		$clauses = $query->GetClauses();
+		$clauses = $query->getClauses();
 
 		if(count($clauses) > 0) {
 			$queryString .= ' WHERE ';
 			
 			foreach($clauses as $clause) {
 				if($clause instanceof QueryBuilder\Clause) {
-					$queryString .= $this->FormatClause($clause);
+					$queryString .= self::formatClause($clause);
 				} elseif($clause instanceof QueryBuilder\ClauseCollection) {
-					$queryString .= $this->FormatClauseCollection($clause);
+					$queryString .= self::formatClauseCollection($clause);
 				}
 			}
 		}
-		$queryString .= $this->FormatGroupBy($query->GetGroupBy());
-		$queryString .= $this->FormatOrderBy($query->GetOrderBy());
-		$queryString .= $this->FormatLimit($query->GetStart(), $query->GetOffset());
+		$queryString .= self::formatGroupBy($query->getGroupBy());
+		$queryString .= self::formatOrderBy($query->getOrderBy());
+		$queryString .= self::formatLimit($query->getOffset(), $query->getLimit());
 		
 		return $queryString;
 	}
     
-  public function FormatInsert(QueryBuilder\Query $query)
-  {
-  	$placeholders = array_fill(0, count($query->GetFields()->ToArray()), '?');
-  	$queryString = 'INSERT INTO '.$query->GetFrom().
-  		' ('.implode(',',array_keys($query->GetFields()->ToArray())).')'.
-  		' VALUES '.
-  		' ('.implode(',', $placeholders).')';
-  	if(!is_null($query->GetDuplicateFieldsForUpdate())) {
-  		$queryString .= ' ON DUPLICATE KEY UPDATE ';
-  		$fields = array();
-  		foreach(array_keys($query->GetDuplicateFieldsForUpdate()->ToArray()) as $key) {
-  			$fields[] = $key.' = ?';
-		}
+	public static function formatInsert(QueryBuilder\Query $query)
+	{
+		$placeholders = array_fill(0, count($query->getFields()->ToArray()), '?');
+		$queryString = 'INSERT INTO '.$query->getTarget().
+			' ('.implode(',',array_keys($query->GetFields()->ToArray())).')'.
+			' VALUES '.
+			' ('.implode(',', $placeholders).')';
+		if(!is_null($query->getDuplicateFieldsForUpdate())) {
+			$queryString .= ' ON DUPLICATE KEY UPDATE ';
+			$fields = array();
+			foreach(array_keys($query->getDuplicateFieldsForUpdate()->toArray()) as $key) {
+				$fields[] = $key.' = ?';
+			}
 		$queryString .= implode(',',$fields);
-  	}
-  	return $queryString;
-  }
-  
-  public function FormatDelete(QueryBuilder\Query $query)
-  {
-  	$queryString = 'DELETE FROM '.$query->GetFrom();
-  	$queryString .= $query->GetAlias()?' AS '.$query->GetAlias().PHP_EOL:''.PHP_EOL;
-  	foreach($query->GetJoins() as $join) {
-		$queryString .= $this->FormatJoin($join);
+		}
+		return $queryString;
 	}
-	$queryString .= ' WHERE ';
-  	foreach($query->GetClauses() as $clause) {
-  		if($clause instanceof QueryBuilder\Clause) {
-  			$queryString .= $this->FormatClause($clause);
-  		} elseif($clause instanceof QueryBuilder\ClauseCollection) {
-  			$queryString .= $this->FormatClauseCollection($clause);
-  		}
-  	}
-  	$queryString .= $this->FormatGroupBy($query->GetGroupBy());
-	$queryString .= $this->FormatOrderBy($query->GetOrderBy());
-	$queryString .= $this->FormatLimit($query->GetStart(), $query->GetOffset()); 
-  	return $queryString;
-  }
+
+	public static function formatDelete(QueryBuilder\Query $query)
+	{
+		$queryString = 'DELETE FROM '.$query->getTarget();
+		$queryString .= $query->GetAlias()?' AS '.$query->getAlias().PHP_EOL:''.PHP_EOL;
+		foreach($query->getJoins() as $join) {
+			$queryString .= self::formatJoin($join);
+		}
+		$queryString .= ' WHERE ';
+		foreach($query->getClauses() as $clause) {
+			if($clause instanceof QueryBuilder\Clause) {
+				$queryString .= self::formatClause($clause);
+			} elseif($clause instanceof QueryBuilder\ClauseCollection) {
+				$queryString .= $this->formatClauseCollection($clause);
+			}
+		}
+		$queryString .= $this->formatGroupBy($query->getGroupBy());
+		$queryString .= $this->formatOrderBy($query->getOrderBy());
+		$queryString .= $this->formatLimit($query->getOffset(), $query->getLimit()); 
+		return $queryString;
+	}
    
-  public function FormatUpdate(QueryBuilder\Query $query)
-  {
-  	$queryString = 'UPDATE '.$query->GetFrom();
-  	
-  	$queryString .= $query->GetAlias()?' AS '.$query->GetAlias().' SET '.PHP_EOL:' SET '.PHP_EOL;
-  	
-  	$queryString .= implode(' = ?, ', array_keys($query->GetFields()->ToArray())).' = ?';
-  	
-  	$queryString .= ' WHERE ';
-  	foreach($query->GetClauses() as $clause) {
-  		if($clause instanceof QueryBuilder\Clause) {
-  			$queryString .= $this->FormatClause($clause);
-  		} elseif($clause instanceof QueryBuilder\ClauseCollection) {
-  			$queryString .= $this->FormatClauseCollection($clause);
-  		}
-  	}
-  	return $queryString;
-  }
+	public static function formatUpdate(QueryBuilder\Query $query)
+	{
+		$queryString = 'UPDATE '.$query->getTarget();
+		
+		$queryString .= $query->getAlias()?' AS '.$query->getAlias().' SET '.PHP_EOL:' SET '.PHP_EOL;
+		
+		$queryString .= implode(' = ?, ', array_keys($query->getFields()->toArray())).' = ?';
+		
+		$queryString .= ' WHERE ';
+		foreach($query->getClauses() as $clause) {
+			if($clause instanceof QueryBuilder\Clause) {
+				$queryString .= self::formatClause($clause);
+			} elseif($clause instanceof QueryBuilder\ClauseCollection) {
+				$queryString .= self::formatClauseCollection($clause);
+			}
+		}
+		return $queryString;
+	}
 	
-	public function getColumnDefinitions($table)
+	public static function getColumnDefinitions($schema, $table)
 	{
 		$query = QueryBuilder\Query::Select('information_schema.COLUMNS','c',
 			new QueryBuilder\Fields('c.COLUMN_NAME AS columnName',
@@ -116,13 +111,14 @@ class tantrum_mysql_adaptor
 				'kcu.POSITION_IN_UNIQUE_CONSTRAINT AS positionInUniqueConstraint'))
 			->LeftJoin('information_schema.KEY_COLUMN_USAGE', QueryBuilder\Clause::On('kcu.COLUMN_NAME','c.COLUMN_NAME'), 'kcu')
 			->LeftJoin('information_schema.KEY_COLUMN_USAGE', QueryBuilder\Clause::On('kcu2.TABLE_SCHEMA','c.TABLE_NAME')->And('kcu2.COLUMN_NAME', 'c.COLUMN_NAME', QueryBuilder\Clause::EQUALS, false), 'kcu2')
-			->Where('c.TABLE_SCHEMA', $this->schema)
+			->Where('c.TABLE_SCHEMA', $schema)
 			->And('c.TABLE_NAME', $table)
 			->GroupBy('concat(c.COLUMN_NAME, c.TABLE_NAME, c.TABLE_SCHEMA)')
 			->OrderBy('c.ORDINAL_POSITION');
 
-		$this->Query($query);
-		$fields = $this->FetchAll('tantrum\QueryBuilder\Field');
+		return $query;
+		//$this->Query($query);
+		//$fields = $this->FetchAll('tantrum\QueryBuilder\Field');
 
 		/*foreach($arrDBColumns as $arrColumnDefinition)
 		{
@@ -149,7 +145,7 @@ class tantrum_mysql_adaptor
 		return $fields;
 	}
 	
-	protected function GetExternalReferences($database, $table, $column)
+	protected function getExternalReferences($schema, $table, $column)
 	{
 		$queryString = '
 			SELECT
@@ -159,7 +155,7 @@ class tantrum_mysql_adaptor
 			FROM
 				information_schema.KEY_COLUMN_USAGE
 			WHERE
-				TABLE_SCHEMA = '.$this->Escape($database).'
+				TABLE_SCHEMA = '.$this->Escape($schema).'
 			AND
 				TABLE_NAME = '.$this->Escape($table).'
 			AND
@@ -169,9 +165,9 @@ class tantrum_mysql_adaptor
 		return $this->FetchAll();
 	}
 	
-	protected function FormatJoin(QueryBuilder\Join $join)
+	protected static function formatJoin(QueryBuilder\Join $join)
 	{
-		switch ($join->GetType()) {
+		switch ($join->getType()) {
 			case QueryBuilder\Join::INNER:
 				$joinType = 'INNER';
 			break;
@@ -182,42 +178,42 @@ class tantrum_mysql_adaptor
 				throw new Exception\DatabaseDException('Join type not handled');
 			break;
 		}
-		return sprintf(' %s JOIN %s AS %s %s', $joinType, $join->GetTarget(), $join->GetAlias(), $this->FormatClauseCollection($join->GetClauseCollection())).PHP_EOL;
+		return sprintf(' %s JOIN %s AS %s %s', $joinType, $join->getTarget(), $join->getAlias(), self::formatClauseCollection($join->getClauseCollection())).PHP_EOL;
 	}
 	
-	protected function FormatClause(QueryBuilder\Clause $clause, $clauseString = '')
+	protected static function formatClause(QueryBuilder\Clause $clause, $clauseString = '')
 	{
 		list($left, $right) = $clause->getArgs();
 		
-		$clauseString .= $this->FormatOperator($clause->getType());
+		$clauseString .= self::formatOperator($clause->getType());
 		$clauseString .= $left;
-		$clauseString .= $this->FormatOperator($clause->getOperator());
-		$clauseString .= $clause->Escape()?'?':$right;
+		$clauseString .= self::formatOperator($clause->getOperator());
+		$clauseString .= $clause->isEscaped()?'?':$right;
 	
 		return $clauseString."\r\n";
 	}
 	
-	protected function FormatClauseCollection(QueryBuilder\ClauseCollection $clauseCollection)
+	protected static function formatClauseCollection(QueryBuilder\ClauseCollection $clauseCollection)
 	{
-		switch($clauseCollection->Count()) {
+		switch($clauseCollection->count()) {
 			case 0: 
 				return '';
 				break;
 			case 1:
-				return $this->FormatClause($clauseCollection->ToArray()[0]);
+				return self::formatClause($clauseCollection->toArray()[0]);
 				break;
 			default:
-				$strReturn = ($clauseCollection->GetType()==QueryBuilder\Clause::ON)?'':$this->FormatOperator($clauseCollection->GetType()).'(';
-				foreach($clauseCollection->ToArray() as $clause) {
-					$return = $this->FormatClause($clause, $return);
+				$return = ($clauseCollection->getType()==QueryBuilder\Clause::ON)?'':self::formatOperator($clauseCollection->getType()).'(';
+				foreach($clauseCollection->toArray() as $clause) {
+					$return = self::formatClause($clause, $return);
 				}
-				$return .= ($clauseCollection->GetType()==QueryBuilder\Clause::ON)?'':')';
+				$return .= ($clauseCollection->getType()==QueryBuilder\Clause::ON)?'':')';
 				return $return;
 				break;
 		}
 	}
 	
-	protected function FormatOperator($operator)
+	protected static function formatOperator($operator)
 	{
 		switch($operator) {
 			case QueryBuilder\Clause::WHERE:
@@ -250,14 +246,14 @@ class tantrum_mysql_adaptor
 		}
 	}
 	
-	protected function FormatGroupBy($groupBy)
+	protected static function formatGroupBy($groupBy)
 	{
 		if(count($groupBy) > 0) {
-			return ' GROUP BY '.implode("\r\n",$groupBy);
+			return ' GROUP BY '.implode(PHP_EOL, $groupBy);
 		}
 	}
 	
-	protected function FormatOrderBy($orderBy)
+	protected static function formatOrderBy($orderBy)
 	{
 		if(count($orderBy) == 0) {
 			return;
@@ -266,10 +262,10 @@ class tantrum_mysql_adaptor
 		foreach($orderBy as $field => $direction) {
 			$orderString .= $field;
 			switch($direction) {
-			 	case Query::ASC:
+			 	case QueryBuilder\Query::ASC:
 			 		$orderString .= ' ASC';
 			 		break;
-			 	case Query::DESC:
+			 	case QueryBuilder\Query::DESC:
 			 		$orderString .= ' DESC';
 			 		break;
 			 	default:
@@ -280,7 +276,7 @@ class tantrum_mysql_adaptor
 		return $orderString;
 	}
 	
-	protected function FormatLimit($number, $offset)
+	protected static function formatLimit($number, $offset)
 	{
 		if(is_null($number) && is_null($offset)) {
 			return;
@@ -291,11 +287,11 @@ class tantrum_mysql_adaptor
 		}
 	}
 	
-	protected function FormatFields($fields)
+	protected static function formatFields($fields)
 	{
 		$return = '';
 
-		foreach($fields->ToArray() as $key => $value) {
+		foreach($fields->toArray() as $key => $value) {
 			$return .= ' '.$key.' = ?';
 		}
 		return $return;
